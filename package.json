@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "Backend mega-project",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "nodemon src/index.js"
   },
   "repository": {
     "type": "git",
@@ -15,5 +16,9 @@
   "bugs": {
     "url": "https://github.com/ParthKshirsagar/Youtube-X-Twitter/issues"
   },
-  "homepage": "https://github.com/ParthKshirsagar/Youtube-X-Twitter#readme"
+  "homepage": "https://github.com/ParthKshirsagar/Youtube-X-Twitter#readme",
+  "devDependencies": {
+    "nodemon": "^3.1.7",
+    "prettier": "^3.4.1"
+  }
 }
