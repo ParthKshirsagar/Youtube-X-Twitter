@@ -14,24 +14,30 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(400, "All the fields are required");
     }
 
-    const existingUser = User.findOne({ username });
+    const existingUser = await User.findOne({ username });
 
     if(existingUser){
         throw new ApiError(409, "User with given username already exists");
     }
-
-    const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
-
+    
+    let avatarLocalPath;
+    let coverImageLocalPath;
+    if(req.files?.avatar) {
+        avatarLocalPath = req.files?.avatar[0]?.path;
+    }
+    if(req.files?.coverImage){
+        coverImageLocalPath = req.files?.coverImage[0]?.path;
+    }
+    
     const avatar = avatarLocalPath ? await uploadToCloudinary(avatarLocalPath) : null;
     const coverImage = coverImageLocalPath ? await uploadToCloudinary(coverImageLocalPath) : null;
 
     const user = await User.create({
         fullName,
-        avatar: avatar.url || "",
+        avatar: avatar?.url || "",
         username: username.toLowerCase(),
         password,
-        coverImage: coverImage.url || "",
+        coverImage: coverImage?.url || "",
         email,
     });
 
@@ -44,7 +50,6 @@ const registerUser = asyncHandler( async (req, res) => {
     };
 
     return res.status(201).json(new ApiResponse(200, createdUser, "User created successfully!"));
-    
 });
 
 export { registerUser }
