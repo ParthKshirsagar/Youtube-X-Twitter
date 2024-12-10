@@ -15,8 +15,7 @@ const userSchema = new mongoose.Schema(
         email: {
             type: String,
             required: true,
-            unique: true,
-            trim: true
+            trim: true,
         },
         password: {
             type: String,
@@ -29,7 +28,7 @@ const userSchema = new mongoose.Schema(
             trim: true
         },
         avatar: {
-            type: String
+            type: String,
         },
         coverImage: {
             type: String,
@@ -90,4 +89,6 @@ userSchema.methods.generateRefreshToken = function(){
 }
 
 
-export const User = mongoose.Model("User", userSchema);
+const User = mongoose.Model("User", userSchema);
+
+export { User };
