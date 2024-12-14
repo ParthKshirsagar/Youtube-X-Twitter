@@ -3,7 +3,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { User } from '../models/user.model.js';
 import jwt from 'jsonwebtoken';
 
-import { uploadToCloudinary } from '../utils/cloudinary.js';
+import { deleteFromCloudinary, uploadToCloudinary } from '../utils/cloudinary.js';
 import { ApiResponse } from '../utils/ApiResponse.js';
 
 const generateAccessAndRefreshTokens = async (userId) => {
@@ -19,7 +19,7 @@ const generateAccessAndRefreshTokens = async (userId) => {
     } catch (error) {
         throw new ApiError(500, "Error while generating access and refresh tokens")
     }
-}
+};
 
 const registerUser = asyncHandler(async (req, res) => {
     const {username, email, password, fullName} = req.body;
@@ -144,7 +144,7 @@ const logoutUser = asyncHandler(async(req, res) => {
             "User logged out successfully"
         )
     )
-})
+});
 
 const refreshAccessToken = asyncHandler(async(req, res) => {
     try {
@@ -174,7 +174,7 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
         return res
         .status(200)
         .cookie("accessToken", accessToken, options)
-        .cookie("accessToken", refreshToken)
+        .cookie("accessToken", refreshToken, options)
         .json(
             new ApiResponse(
                 200,
@@ -188,11 +188,147 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
     } catch (error) {
         throw new ApiError(401, error?.message || "Invalid refreshToken");
     }
-})
+});
+
+const changePassword = asyncHandler(async(req, res) => {
+    console.log("hello");
+    const {oldPassword, newPassword} = req.body;
+    
+    const user = await User.findById(req.user?._id);
+    if(!user){
+        throw new ApiError(401, "Unauthorized request");
+    }
+    
+    const isOldPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+    if(!isOldPasswordCorrect){
+        throw new ApiError(400, "Incorrect old password");
+    }
+
+    user.password = newPassword;
+    user.save({ validateBeforeSave: false });
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            {},
+            "Password changed successfully"
+        )
+    )
+});
+
+const getCurrentUser = asyncHandler(async(req, res) => {
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            { user: req.user },
+            "Current user fetched"
+        )
+    )
+});
+
+const updateAccountDetails = asyncHandler(async(req, res) => {
+    const {fullName, email} = req.body;
+
+    if(!fullName && !email){
+        throw new ApiError(400, "At least one field needs to be given to change");
+    }
+
+    const currentUser = req.user;
+    
+    currentUser.fullName = fullName ? fullName : currentUser.fullName;
+    currentUser.email = email ? email : currentUser.email;
+    await currentUser.save({ validateBeforeSave: false });
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            { updatedUser: currentUser },
+            "User updated successfully"
+        )
+    )
+});
+
+const updateUserImages = asyncHandler(async(req, res) => {
+    const user = req.user;
+
+    if(!user){
+        throw new ApiError(401, "Unauthorized request");
+    }
+
+    let avatarLocalPath;
+    let coverImageLocalPath;
+    if(req.files?.avatar){
+        avatarLocalPath = req.files.avatar[0]?.path;
+    }
+    if(req.files?.coverImage){
+        coverImageLocalPath = req.files.coverImage[0]?.path;
+    }
+
+    if(!avatarLocalPath && !coverImageLocalPath){
+        throw new ApiError(400, "Atlest one image needs to be given to be updated")
+    }
+    
+    const currentAvatarFileUrl = user.avatar;
+    const currentCoverImageFileUrl = user.coverImage;
+    
+    // getting stored file names from url saved in db for deletion of previous files once new files are added
+    const currentAvatarFilePublicID = currentAvatarFileUrl.split("/").slice(-1)[0].split(".")[0];
+    const currentCoverImageFilePublicID = currentCoverImageFileUrl.split("/").slice(-1)[0].split(".")[0];
+
+    const avatar = avatarLocalPath ? await uploadToCloudinary(avatarLocalPath) : null;
+    const coverImage = coverImageLocalPath ? await uploadToCloudinary(coverImageLocalPath) : null;
+
+    if(avatar && coverImage){
+        const response = await deleteFromCloudinary([currentAvatarFilePublicID, currentCoverImageFilePublicID]);
+        if(!response){
+            throw new ApiError(500, "Error while deleting previous files from cloudinary");
+        }
+    }
+    if(avatar && !coverImage){
+        const response = await deleteFromCloudinary([currentAvatarFilePublicID]);
+        if(!response){
+            throw new ApiError(500, "Error while deleting previous avatar file from cloudinary");
+        }
+    }
+    if(!avatar && coverImage){
+        const response = await deleteFromCloudinary([currentcoverImageFilePublicID]);
+        if(!response){
+            throw new ApiError(500, "Error while deleting previous Cover Image file from cloudinary");
+        }
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(user._id, {
+        $set: {
+            avatar: avatar?.url || currentAvatarFileUrl,
+            coverImage: coverImage?.url ||currentCoverImageFileUrl
+        }
+    }).select("-password -refreshToken");
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            { user: updatedUser },
+            "User files updated successfully"
+        )
+    );
+});
+
 
 export {
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changePassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserImages
 }

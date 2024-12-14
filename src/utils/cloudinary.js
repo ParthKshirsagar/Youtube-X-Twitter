@@ -7,7 +7,7 @@ cloudinary.config({
     api_secret: process.env.CLOUDINARY_API_SECRET,
 })
 
-export const uploadToCloudinary = async (localFilePath) => {
+const uploadToCloudinary = async (localFilePath) => {
     try {
         if(!localFilePath) console.log("File path not found!!");
         // upload to cloudinary
@@ -23,4 +23,19 @@ export const uploadToCloudinary = async (localFilePath) => {
         console.log("Error while uploading file to cloudinary: ", error);
         return null;
     }
+}
+
+const deleteFromCloudinary = async (publicIDs) => {
+    try {
+        const response = await cloudinary.api.delete_resources(publicIDs);
+        console.log("Files deleted successfully: ", response.deleted);
+        return response;
+    } catch (error) {
+        console.log("Error while deleting file from cloudinary")
+    }
+}
+
+export {
+    uploadToCloudinary,
+    deleteFromCloudinary
 }
