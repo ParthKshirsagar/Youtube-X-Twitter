@@ -174,7 +174,7 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
         return res
         .status(200)
         .cookie("accessToken", accessToken, options)
-        .cookie("accessToken", refreshToken, options)
+        .cookie("refreshToken", refreshToken, options)
         .json(
             new ApiResponse(
                 200,
@@ -191,7 +191,6 @@ const refreshAccessToken = asyncHandler(async(req, res) => {
 });
 
 const changePassword = asyncHandler(async(req, res) => {
-    console.log("hello");
     const {oldPassword, newPassword} = req.body;
     
     const user = await User.findById(req.user?._id);
